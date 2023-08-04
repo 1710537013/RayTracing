@@ -14,24 +14,42 @@ using namespace Walnut;
 class ExampleLayer : public Walnut::Layer
 {
 public:
-	ExampleLayer():cam(45.0f,0.1f, 1000.0f){
-		m_scenes.scenes.push_back({ {1,0,0},{1,0,1},.5f });
-		m_scenes.scenes.push_back({ {0,0,0},{1,1,0},.5f });
+	ExampleLayer() :cam(45.0f, 0.1f, 1000.0f) {
+
+		auto material_ground = std::make_shared<Lambert>(glm::vec3(0.8, 0.8, 0.0));
+		auto material_center = std::make_shared<Lambert>(glm::vec3(0.8, 0.6, 0.2));
+		auto material_left = std::make_shared<Metal>(glm::vec3(0.8, 0.8, 0.8), 0.0);
+		auto material_right = std::make_shared<Metal>(glm::vec3(0.8, 0.6, 0.2), 1.0);
+		m_scenes.Mat.push_back(material_ground);
+		m_scenes.Mat.push_back(material_center);
+		m_scenes.Mat.push_back(material_left);
+		m_scenes.Mat.push_back(material_right);
+
+		m_scenes.scenes.push_back({ glm::vec3(0.0, -100.5, -1.0), 100.0, 0 });
+		m_scenes.scenes.push_back({ glm::vec3(0.0, 0.0, -1.0), 0.5, 1 });
+		m_scenes.scenes.push_back({ glm::vec3(-1.0, 0.0, -1.0), 0.5, 2 });
+		m_scenes.scenes.push_back({ glm::vec3(1.0, 0.0, -1.0), 0.5, 3 });
+
 	}
 	virtual void OnUpdate(float ts) {
-		cam.OnUpdate(ts);
+		if (cam.OnUpdate(ts))
+			m_render.ResetFrameIndex();
 	}
 	virtual void OnUIRender() override
 	{
 		ImGui::Begin("Setting");
 		ImGui::Text("last render: %.3fms", lastTime);
 		ImGui::ColorEdit3("LightColor: ", glm::value_ptr(lightColor));
-		ImGui::DragFloat3("LightPos: ",glm::value_ptr(lightPos),.1f);
+		ImGui::DragFloat3("LightPos: ", glm::value_ptr(lightPos), .1f);
 		m_render.SetLight(lightColor, lightPos);
-		/*if (ImGui::Button("Render")) {
-			Render();
-		}*/
 
+		ImGui::Checkbox("Accumulate", &m_render.GetSettings().Accumulate);
+		if (ImGui::Button("Render")) {
+			Render();
+		}
+		if (ImGui::Button("ResetFrame")) {
+			m_render.ResetFrameIndex();
+		}
 		ImGui::End();
 
 		//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(.0f, .0f));
@@ -41,10 +59,10 @@ public:
 		m_ViewportHeight = ImGui::GetContentRegionAvail().y;
 		auto image = m_render.GetImage();
 		if (image)
-			ImGui::Image(image->GetDescriptorSet(), { (float)image->GetWidth(), (float)image->GetHeight() },ImVec2(0,1), ImVec2(1,0));
+			ImGui::Image(image->GetDescriptorSet(), { (float)image->GetWidth(), (float)image->GetHeight() }, ImVec2(0, 1), ImVec2(1, 0));
 
 		ImGui::End();
-//		ImGui::PopStyleVar();
+		//		ImGui::PopStyleVar();
 
 		Render();
 	}
@@ -52,7 +70,7 @@ public:
 		Timer time;
 		cam.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_render.Resize(m_ViewportWidth, m_ViewportHeight);
-		m_render.Render(m_scenes,cam);
+		m_render.Render(m_scenes, cam);
 
 		lastTime = time.ElapsedMillis();
 	}
@@ -62,7 +80,7 @@ private:
 	Renderer m_render;
 	float lastTime = .0;
 	uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
-	glm::vec3 lightColor = {1.0f,1.0f,1.0f};
+	glm::vec3 lightColor = { 0.6f, 0.7f, 0.9f };
 	glm::vec3 lightPos = { 6.0f,6.0f,-1.0f };
 };
 
