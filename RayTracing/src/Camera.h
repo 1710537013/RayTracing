@@ -36,8 +36,15 @@ private:
 	float m_NearClip = 0.1f;
 	float m_FarClip = 100.0f;
 
-	glm::vec3 m_Position{0.0f, 0.0f, 0.0f};
-	glm::vec3 m_ForwardDirection{0.0f, 0.0f, 0.0f};
+#define Open 1
+#if Open 
+	glm::vec3 m_Position{278, 278, -800};
+	glm::vec3 m_ForwardDirection{0, 0, 1};
+#else
+
+	glm::vec3 m_Position{13, 2, 3};
+	glm::vec3 m_ForwardDirection{0, -1, -1};
+#endif // Open 
 
 	// Cached ray directions
 	std::vector<glm::vec3> m_RayDirections;

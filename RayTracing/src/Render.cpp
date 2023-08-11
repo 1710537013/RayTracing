@@ -51,8 +51,22 @@ void Renderer::Render(const Scene& m_scene, const Camera& cam) {
 	std::for_each(std::execution::par, m_ImageVerticalIter.begin(), m_ImageVerticalIter.end(), [this](uint32_t y) {
 		std::for_each(std::execution::par, m_ImageHorizontalIter.begin(), m_ImageHorizontalIter.end(), [this, y](uint32_t x) {
 			Ray ray;
-			ray.dir = glm::normalize(camera->GetRayDirections()[y * m_Image->GetWidth() + x]);
+			glm::vec3 camDir = glm::normalize(camera->GetRayDirections()[y * m_Image->GetWidth() + x]);
+#define aperture 0
+#if aperture 
+			glm::vec3 u = glm::normalize(glm::cross(glm::vec3(0, 1.0f, 0), camDir));
+			glm::vec3 v = glm::normalize(glm::cross(camDir, u));
+			glm::vec3 rd = Walnut::Random::InUnitSphere() * 0.005f;
+			glm::vec3 offset = rd.x * u + rd.y * v;
+
+			//ray.pos = camera->GetPosition();// +offset.x + offset.y;
+			ray.pos = camera->GetPosition() + offset.x + offset.y;
+			//ray.dir = glm::normalize(camDir);// -offset.x - offset.y);
+			ray.dir = glm::normalize(camDir - offset.x - offset.y);
+#else 
 			ray.pos = camera->GetPosition();
+			ray.dir = glm::normalize(camDir);
+#endif
 
 			m_ImageAccumulateData[y * m_Image->GetWidth() + x] += glm::vec4(PerPixel(ray, bounces), 1.0f);
 
@@ -106,54 +120,22 @@ glm::vec3 Renderer::PerPixel(Ray ray, int bounces)
 	Payload payload;
 	payload = RayTrace(ray);
 	if (payload.HitT < 0.0f)
-	{
-		glm::vec3 unit_direction = glm::normalize(ray.dir);
-		float t = 0.5 * (unit_direction.y + 1.0);
-		return (1.0f - t) * glm::vec4(1.0, 1.0, 1.0, 1.0f) + t * glm::vec4(lightColor, 1.0f);
-	}
-
-	const Sphere& obj = scene->scenes[payload.objIndex];
-	const std::shared_ptr<Material> mat = scene->Mat[obj.MatIndex];
+		return glm::vec3(0.0, 0.0, 0.0);
 
 	glm::vec3 attenuation;
-	if (mat->Shading(ray, payload, attenuation))
-		return attenuation * mat->albedo * PerPixel(ray, bounces - 1);
-	return glm::vec3(0, 0, 0);
+	glm::vec3 emitted = payload.mat->emitted(payload.u, payload.v, payload.worldPos);
+	if (!payload.mat->Shading(ray, payload, attenuation))
+		return  emitted;
+	return emitted+ attenuation* PerPixel(ray, bounces - 1);
 }
 
 Payload Renderer::RayTrace(const Ray& ray)
 {
-	/**
-	* D^2*t^2 + 2*D*(P-O)*t + (P-O)^2 - R^2 = 0
-	**/
-	if (scene->scenes.size() == 0)
-		return Miss();
-
-	float min_t = FLT_MAX;
-	int closeSphereIndex = -1;
-	scene->Hit(min_t, ray, closeSphereIndex);
-
-	if (closeSphereIndex < 0)
-		return Miss();
-	return CloseHit(ray, min_t, closeSphereIndex);
+	Payload rec_payload;
+	if (scene->Hit(0.001f, FLT_MAX, rec_payload, ray))
+		return rec_payload;
+	else {
+		rec_payload.HitT = -1.0f;
+		return rec_payload;
+	}
 }
-
-
-Payload Renderer::Miss()
-{
-	Payload payload;
-	payload.HitT = -1.0f;
-	return payload;
-}
-
-Payload Renderer::CloseHit(const Ray& ray, float min_t, int closeSphereIndex)
-{
-	Payload payload;
-	payload.worldPos = ray.pos + ray.dir * min_t;
-	payload.objIndex = closeSphereIndex;
-	payload.HitT = min_t;
-	payload.worldNoraml = glm::normalize(payload.worldPos - scene->scenes[closeSphereIndex].pos);
-
-	return payload;
-}
-

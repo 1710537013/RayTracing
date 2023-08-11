@@ -8,13 +8,15 @@
 #include "Ray.h"
 #include"Scene.h"
 using namespace Walnut;
-
+class Scene;
+class Material;
 struct Payload{
 	glm::vec3 worldPos;
 	glm::vec3 worldNoraml;
+	float u;
+	float v;
 	float HitT;
-
-	int objIndex;
+	std::shared_ptr<Material> mat;
 };
 
 class Renderer
@@ -34,8 +36,6 @@ public:
 
 	glm::vec3 PerPixel(Ray ray, int bounces);
 	Payload RayTrace(const Ray& ray);
-	Payload Miss();
-	Payload CloseHit(const Ray& ray, float min_t, int closeSphereInde);
 	void ResetFrameIndex() { m_FrameIndex = 1; }
 	Settings& GetSettings() { return m_setting; }
 private:
